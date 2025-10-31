@@ -111,6 +111,27 @@ struct RuntimeGlobals {
         return model_cfg.num_layers;
     }
 
+    // Generic pointer helpers for ops (element offsets)
+    template <typename T = kittens::bf16>
+    __device__ __host__ inline T *ptr_input0(uint32_t offset_elems) const {
+        return reinterpret_cast<T *>(hidden_states.data) + offset_elems;
+    }
+
+    template <typename T = kittens::bf16>
+    __device__ __host__ inline const T *ptr_input0(uint32_t offset_elems) {
+        return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
+    }
+
+    template <typename T = kittens::bf16>
+    __device__ __host__ inline T *ptr_weight(uint32_t offset_elems) const {
+        return reinterpret_cast<T *>(unified_weights.data) + offset_elems;
+    }
+
+    template <typename T = kittens::bf16>
+    __device__ __host__ inline T *ptr_output(uint32_t offset_elems) const {
+        return reinterpret_cast<T *>(hidden_states.data) + offset_elems;
+    }
+
     // Get weight pointer for a specific layer and weight type
     __device__ __host__ inline kittens::bf16 *get_layer_weight(
         uint16_t layer_idx, uint64_t offset_in_layer, uint32_t size

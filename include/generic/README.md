@@ -257,6 +257,19 @@ python3 megakernels/generic_scheduler.py
 # Mistral 7B: 8 instructions/layer, 151.05M FLOPs/layer
 ```
 
+### CUDA Smoke Test (Optional)
+
+```bash
+# Build minimal generic kernel
+export THUNDERKITTENS_ROOT=$(pwd)/ThunderKittens
+export MEGAKERNELS_ROOT=$(pwd)
+export PYTHON_VERSION=$(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])')
+cd demos/generic-hopper && make && cd ../..
+
+# Run optional test (requires CUDA + torch)
+RUN_GENERIC_SMOKE=1 python -m unittest tests/generic/test_smoke_demo.py::TestGenericSmokeDemo::test_matmul_smoke -v
+```
+
 ## Documentation
 
 See `GENERIC_ISA.md` for complete architecture documentation.

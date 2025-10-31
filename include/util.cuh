@@ -288,7 +288,7 @@ constexpr int TEVENT_TRIPLES_OUTPUT_READY = 125;
             dispatch_op<name##_op_dispatcher<config, globals>::dispatcher,     \
                         ops...>::template run<void, config, globals,           \
                                               ::megakernel::state<config>>(    \
-                mks.instruction()[0], g, mks);                                 \
+                (mks.instruction()[0] & 0xFF), g, mks);                        \
             if (kittens::laneid() == 0) {                                               \
                 if (is_consumer) {                                             \
                     mks.record(start_event + 2 * kittens::warpid() + 1);                \

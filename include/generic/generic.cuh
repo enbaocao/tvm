@@ -26,6 +26,11 @@
 #include "model_config.cuh"
 #include "instruction.cuh"
 #include "globals.cuh"
+#include "worker_types.cuh"
+
+// Generic op implementations (scaffold)
+#include "ops/matmul.cuh"
+#include "ops/norm.cuh"
 
 namespace megakernel {
 namespace generic {
@@ -117,6 +122,109 @@ __device__ inline void dispatch_generic_instruction(
 
 // This will be specialized for each operation in separate files
 // See: generic/ops/*.cuh
+
+// --------------------------------------------------------------------------
+// Default worker-specific dispatcher implementation
+// --------------------------------------------------------------------------
+
+template <typename config>
+__device__ inline void dispatch_generic_instruction_worker(
+    const RuntimeGlobals<config> &g,
+    ::megakernel::state<config> &mks,
+    const GenericInstruction &inst,
+    worker_consumer
+) {
+    switch (inst.opcode) {
+    case OP_MATMUL:
+        OpMatmul<config>::consumer::run(g, mks);
+        break;
+    case OP_RMS_NORM:
+        OpRmsNorm<config>::consumer::run(g, mks);
+        break;
+    case OP_LAYER_NORM:
+        OpLayerNorm<config>::consumer::run(g, mks);
+        break;
+    default:
+        // Unknown opcode for consumer; no-op
+        break;
+    }
+}
+
+template <typename config>
+__device__ inline void dispatch_generic_instruction_worker(
+    const RuntimeGlobals<config> &g,
+    ::megakernel::state<config> &mks,
+    const GenericInstruction &inst,
+    worker_loader
+) {
+    switch (inst.opcode) {
+    case OP_MATMUL:
+        OpMatmul<config>::loader::run(g, mks);
+        break;
+    case OP_RMS_NORM:
+        OpRmsNorm<config>::loader::run(g, mks);
+        break;
+    case OP_LAYER_NORM:
+        OpLayerNorm<config>::loader::run(g, mks);
+        break;
+    default:
+        break;
+    }
+}
+
+template <typename config>
+__device__ inline void dispatch_generic_instruction_worker(
+    const RuntimeGlobals<config> &g,
+    ::megakernel::state<config> &mks,
+    const GenericInstruction &inst,
+    worker_storer
+) {
+    switch (inst.opcode) {
+    case OP_MATMUL:
+        OpMatmul<config>::storer::run(g, mks);
+        break;
+    case OP_RMS_NORM:
+        OpRmsNorm<config>::storer::run(g, mks);
+        break;
+    case OP_LAYER_NORM:
+        OpLayerNorm<config>::storer::run(g, mks);
+        break;
+    default:
+        break;
+    }
+}
+
+template <typename config>
+__device__ inline void dispatch_generic_instruction_worker(
+    const RuntimeGlobals<config> &g,
+    ::megakernel::state<config> &mks,
+    const GenericInstruction &inst,
+    worker_launcher
+) {
+    switch (inst.opcode) {
+    case OP_MATMUL:
+        OpMatmul<config>::launcher::run(g, mks);
+        break;
+    case OP_RMS_NORM:
+        OpRmsNorm<config>::launcher::run(g, mks);
+        break;
+    case OP_LAYER_NORM:
+        OpLayerNorm<config>::launcher::run(g, mks);
+        break;
+    default:
+        break;
+    }
+}
+
+template <typename config, typename worker_type>
+__device__ inline void dispatch_generic_instruction(
+    const RuntimeGlobals<config> &g,
+    ::megakernel::state<config> &mks,
+    const GenericInstruction &inst
+) {
+    // Route to the worker-specific dispatcher using tag dispatching
+    dispatch_generic_instruction_worker<config>(g, mks, inst, worker_type{});
+}
 
 // ============================================================================
 // Performance Hints
