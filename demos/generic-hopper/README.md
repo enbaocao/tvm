@@ -17,8 +17,12 @@ Run optional smoke test (requires CUDA + PyTorch)
 
 ```bash
 cd ../..
-RUN_GENERIC_SMOKE=1 python -m unittest tests/generic/test_smoke_demo.py::TestGenericSmokeDemo::test_matmul_smoke -v
+# Option A: run unit tests:
+RUN_GENERIC_SMOKE=1 python -m unittest tests/generic/test_smoke_demo.py -v
+RUN_GENERIC_SMOKE=1 python -m unittest tests/generic/test_smoke_fused.py -v
+
+# Option B: use the quick smoke script:
+python megakernels/scripts/generic_smoke.py all
 ```
 
 This test constructs a single MATMUL instruction and checks that the output matches a known matvec result.
-

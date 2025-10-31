@@ -1,6 +1,7 @@
 #include "kittens.cuh"
 #include "megakernel.cuh"
 #include "generic/generic.cuh"
+#include "pyutils/pyutils.cuh"
 
 using namespace kittens;
 using namespace megakernel;
@@ -24,23 +25,23 @@ struct smoke_globals {
     // Pointer helpers expected by generic ops
     template <typename T = float>
     __device__ __host__ inline const T *ptr_input0(uint32_t offset_elems) const {
-        return reinterpret_cast<const T *>(a.data) + offset_elems;
+        return reinterpret_cast<const T *>(a.raw_ptr) + offset_elems;
     }
     template <typename T = float>
     __device__ __host__ inline const T *ptr_input1(uint32_t offset_elems) const {
-        return reinterpret_cast<const T *>(b.data) + offset_elems;
+        return reinterpret_cast<const T *>(b.raw_ptr) + offset_elems;
     }
     template <typename T = float>
     __device__ __host__ inline const T *ptr_input2(uint32_t offset_elems) const {
-        return reinterpret_cast<const T *>(b.data) + offset_elems;
+        return reinterpret_cast<const T *>(b.raw_ptr) + offset_elems;
     }
     template <typename T = float>
     __device__ __host__ inline const T *ptr_weight(uint32_t offset_elems) const {
-        return reinterpret_cast<const T *>(b.data) + offset_elems;
+        return reinterpret_cast<const T *>(b.raw_ptr) + offset_elems;
     }
     template <typename T = float>
     __device__ __host__ inline T *ptr_output(uint32_t offset_elems) const {
-        return reinterpret_cast<T *>(c.data) + offset_elems;
+        return reinterpret_cast<T *>(c.raw_ptr) + offset_elems;
     }
 
     dim3 grid() const { return dim3(1); }

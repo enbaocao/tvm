@@ -46,7 +46,8 @@ struct RuntimeGlobals {
     // Generic KV cache supporting variable head counts
     // Shape: (num_layers, 2, num_kv_heads, max_seq_len, head_dim)
     //        where 2 = K and V
-    kittens::gl<kittens::bf16, -1, -1, -1, -1, -1> kv_cache;
+    // Flattened view for KV cache (multi-dim folded into depth/rows/cols)
+    kittens::gl<kittens::bf16, -1, -1, -1, -1> kv_cache;
 
     // ========== Position Embeddings ==========
     // RoPE frequency tables
@@ -57,13 +58,13 @@ struct RuntimeGlobals {
     kittens::gl<kittens::bf16, 1, 1, -1, -1> pos_embed_table;
 
     // ALiBi slopes (for models using ALiBi positional bias)
-    kittens::gl<float, 1, 1, -1> alibi_slopes;
+    kittens::gl<float, 1, 1, 1, -1> alibi_slopes;
 
     // ========== Activation Buffers ==========
     // Generic activation buffers supporting variable dimensions
-    kittens::gl<kittens::bf16, 1, -1, -1> hidden_states;
-    kittens::gl<kittens::bf16, 1, -1, -1> residual_states;
-    kittens::gl<kittens::bf16, 1, -1, -1> norm_output;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> hidden_states;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> residual_states;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> norm_output;
 
     // Attention buffers
     kittens::gl<kittens::bf16, 1, -1, -1, -1> q_proj;  // (batch, num_heads, seq_len, head_dim)
@@ -76,12 +77,12 @@ struct RuntimeGlobals {
     kittens::gl<float, 1, -1, -1, -1> attn_out_intermediates;
 
     // MLP buffers
-    kittens::gl<kittens::bf16, 1, -1, -1> gate_output;
-    kittens::gl<kittens::bf16, 1, -1, -1> up_output;
-    kittens::gl<kittens::bf16, 1, -1, -1> mlp_output;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> gate_output;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> up_output;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> mlp_output;
 
     // LM head output
-    kittens::gl<kittens::bf16, 1, -1, -1> logits;
+    kittens::gl<kittens::bf16, 1, 1, -1, -1> logits;
 
     // ========== Synchronization ==========
     // Dynamic barriers for inter-SM synchronization
@@ -90,7 +91,7 @@ struct RuntimeGlobals {
 
     // ========== Scratch Space ==========
     // Temporary buffer for intermediate computations
-    kittens::gl<kittens::bf16, 1, -1> scratch_buffer;
+    kittens::gl<kittens::bf16, 1, 1, 1, -1> scratch_buffer;
 
     // ========== Runtime State ==========
     uint32_t current_seq_pos;     // Current position in sequence
@@ -114,32 +115,32 @@ struct RuntimeGlobals {
     // Generic pointer helpers for ops (element offsets)
     template <typename T = kittens::bf16>
     __device__ __host__ inline T *ptr_input0(uint32_t offset_elems) const {
-        return reinterpret_cast<T *>(hidden_states.data) + offset_elems;
+        return reinterpret_cast<T *>(hidden_states.raw_ptr) + offset_elems;
     }
 
     template <typename T = kittens::bf16>
     __device__ __host__ inline const T *ptr_input0(uint32_t offset_elems) {
-        return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
+        return reinterpret_cast<const T *>(hidden_states.raw_ptr) + offset_elems;
     }
 
     // Secondary and tertiary inputs (by default, also alias hidden_states)
     template <typename T = kittens::bf16>
     __device__ __host__ inline const T *ptr_input1(uint32_t offset_elems) const {
-        return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
+        return reinterpret_cast<const T *>(hidden_states.raw_ptr) + offset_elems;
     }
     template <typename T = kittens::bf16>
     __device__ __host__ inline const T *ptr_input2(uint32_t offset_elems) const {
-        return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
+        return reinterpret_cast<const T *>(hidden_states.raw_ptr) + offset_elems;
     }
 
     template <typename T = kittens::bf16>
     __device__ __host__ inline T *ptr_weight(uint32_t offset_elems) const {
-        return reinterpret_cast<T *>(unified_weights.data) + offset_elems;
+        return reinterpret_cast<T *>(unified_weights.raw_ptr) + offset_elems;
     }
 
     template <typename T = kittens::bf16>
     __device__ __host__ inline T *ptr_output(uint32_t offset_elems) const {
-        return reinterpret_cast<T *>(hidden_states.data) + offset_elems;
+        return reinterpret_cast<T *>(hidden_states.raw_ptr) + offset_elems;
     }
 
     // Get weight pointer for a specific layer and weight type
@@ -150,7 +151,7 @@ struct RuntimeGlobals {
         uint64_t total_offset = 0;
         // This would need proper calculation based on model architecture
         // For now, simplified
-        return unified_weights.data + total_offset + offset_in_layer;
+        return unified_weights.raw_ptr + total_offset + offset_in_layer;
     }
 
     // Get norm weight for specific layer and norm type
@@ -158,7 +159,7 @@ struct RuntimeGlobals {
         uint16_t layer_idx, uint8_t norm_idx
     ) {
         uint32_t offset = layer_idx * 2 + norm_idx;  // 2 norms per layer (attn, mlp)
-        return norm_weights.data + offset * model_cfg.hidden_dim;
+        return norm_weights.raw_ptr + offset * model_cfg.hidden_dim;
     }
 
     // Get KV cache pointer for specific layer, head, and position
@@ -170,7 +171,7 @@ struct RuntimeGlobals {
             0 * model_cfg.num_kv_heads * model_cfg.max_seq_len * model_cfg.head_dim +  // K cache (0)
             head_idx * model_cfg.max_seq_len * model_cfg.head_dim +
             seq_pos * model_cfg.head_dim;
-        return kv_cache.data + offset;
+        return kv_cache.raw_ptr + offset;
     }
 
     __device__ __host__ inline kittens::bf16 *get_v_cache(
@@ -181,7 +182,7 @@ struct RuntimeGlobals {
             1 * model_cfg.num_kv_heads * model_cfg.max_seq_len * model_cfg.head_dim +  // V cache (1)
             head_idx * model_cfg.max_seq_len * model_cfg.head_dim +
             seq_pos * model_cfg.head_dim;
-        return kv_cache.data + offset;
+        return kv_cache.raw_ptr + offset;
     }
 
     // Grid/block configuration
