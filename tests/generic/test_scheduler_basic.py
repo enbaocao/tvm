@@ -43,6 +43,17 @@ class TestGenericSchedulerBasic(unittest.TestCase):
         # No RoPE op in GPT-2 sequence (no explicit ROPE_EMBED expected)
         self.assertNotIn(Opcode.ROPE_EMBED, [inst.opcode for inst in layer_instrs])
 
+    def test_non_fused_path_contains_norm_and_rope(self):
+        # Force non-fused to check explicit ops presence
+        cfg = ModelConfig.from_llama_3_1b()
+        sch = UniversalScheduler(cfg)
+        layer_instrs = sch.build_transformer_layer(layer_idx=0, use_fused_ops=False)
+        opcodes = [inst.opcode for inst in layer_instrs]
+        self.assertIn(Opcode.RMS_NORM, opcodes)
+        self.assertIn(Opcode.MATMUL, opcodes)
+        # Llama uses RoPE
+        self.assertIn(Opcode.ROPE_EMBED, opcodes)
+
     def test_full_model_sizes(self):
         cfg = ModelConfig.from_llama_3_1b()
         sch = UniversalScheduler(cfg)
