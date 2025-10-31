@@ -51,7 +51,55 @@ class TestGenericSmokeDemo(unittest.TestCase):
         expected = torch.tensor([1.0, 2.0, 3.0, 6.0], device=device)
         self.assertTrue(torch.allclose(c, expected, atol=1e-6))
 
+    @unittest.skipUnless(os.environ.get("RUN_GENERIC_SMOKE", "0") == "1", "Set RUN_GENERIC_SMOKE=1 to enable CUDA smoke test")
+    def test_rmsnorm_smoke(self):
+        try:
+            import torch
+        except Exception:
+            self.skipTest("PyTorch not installed")
+        if not torch.cuda.is_available():
+            self.skipTest("CUDA not available")
+
+        try:
+            mk_generic = importlib.import_module("mk_generic")
+        except Exception as e:
+            self.skipTest(f"mk_generic not importable: {e}")
+
+        device = torch.device("cuda")
+
+        # Build a single RMS_NORM instruction
+        # opcode=0x50, eps in scale_factor slot (buf[15])
+        n = 4
+        inst = torch.zeros(32, dtype=torch.int32)
+        inst[0] = (0x50) | (0 << 8) | (0 << 16)
+        inst[1] = (1) | (n << 16)  # m=1, n=n
+        inst[7] = 0  # output_offset
+        inst[4] = 0  # input_offset_0
+        inst[8] = n  # weight_offset placed after input; we'll arrange buffers accordingly
+        # write scale_factor as float into buf[15]
+        eps = torch.tensor(1e-5, dtype=torch.float32)
+        inst[15] = eps.view(torch.int32)
+
+        instructions = inst.view(1, 1, 32).contiguous().to(device)
+        timings = torch.zeros((1, 1, 128), dtype=torch.int32, device=device)
+
+        # Prepare input x and weight gamma of length n
+        x = torch.tensor([1.0, 2.0, 3.0, 4.0], dtype=torch.float32, device=device)
+        gamma = torch.tensor([1.0, 1.0, 1.0, 1.0], dtype=torch.float32, device=device)
+
+        # The binding expects three buffers a,b,c; we pack x||gamma into a and b:
+        # a: input x starting at 0; b: gamma starting at offset n
+        a = x.clone()
+        b = torch.cat([torch.zeros(n, device=device, dtype=torch.float32), gamma])
+        c = torch.zeros(n, dtype=torch.float32, device=device)
+
+        mk_generic.mk_generic_matmul(instructions, timings, a, b, c)
+
+        # Compute expected RMSNorm(x) with gamma=1
+        rms = torch.sqrt((x.pow(2).mean()) + 1e-5)
+        expected = x / rms
+        self.assertTrue(torch.allclose(c, expected, atol=1e-5))
+
 
 if __name__ == "__main__":
     unittest.main()
-

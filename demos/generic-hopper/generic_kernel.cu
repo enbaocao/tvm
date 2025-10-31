@@ -41,11 +41,13 @@ struct smoke_globals {
 };
 
 using matmul_op = megakernel::generic::OpMatmul<megakernel::default_config>;
+using rmsnorm_op = megakernel::generic::OpRmsNorm<megakernel::default_config>;
+using layernorm_op = megakernel::generic::OpLayerNorm<megakernel::default_config>;
 
 PYBIND11_MODULE(mk_generic, m) {
     m.doc() = "Generic ISA smoke test kernel";
     kittens::py::bind_kernel<
-        mk<megakernel::default_config, smoke_globals, matmul_op>>(
+        mk<megakernel::default_config, smoke_globals, matmul_op, rmsnorm_op, layernorm_op>>(
         m, "mk_generic_matmul",
         &smoke_globals::instructions,
         &smoke_globals::timings,
@@ -53,5 +55,5 @@ PYBIND11_MODULE(mk_generic, m) {
         &smoke_globals::b,
         &smoke_globals::c
     );
+    // Reuse the same binding name for RMS/LayerNorm; the kernel inspects the opcode
 }
-

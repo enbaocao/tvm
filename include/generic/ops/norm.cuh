@@ -18,8 +18,29 @@ struct OpRmsNorm {
                                            ::megakernel::state<config> &mks) {
             GenericInstruction inst{};
             inst.deserialize_from(mks.instruction());
-            // TODO: Implement RMSNorm over n_dim with epsilon = inst.scale_factor
-            (void)g; (void)inst;
+            // Minimal RMSNorm over n_dim with epsilon = inst.scale_factor
+            if (::kittens::laneid() == 0) {
+                const int N = inst.n_dim;
+                const float eps = inst.scale_factor;
+
+                const float *x = g.template ptr_input0<const float>(inst.input_offset_0);
+                const float *w = g.template ptr_weight<const float>(inst.weight_offset);
+                float *y = g.template ptr_output<float>(inst.output_offset);
+
+                float sum_sq = 0.f;
+                #pragma unroll 1
+                for (int i = 0; i < N; ++i) {
+                    float v = x[i];
+                    sum_sq += v * v;
+                }
+                float rms = sqrtf(sum_sq / (float)N + eps);
+                float inv_rms = 1.f / rms;
+
+                #pragma unroll 1
+                for (int i = 0; i < N; ++i) {
+                    y[i] = (x[i] * inv_rms) * (w ? w[i] : 1.f);
+                }
+            }
         }
     };
 
@@ -59,8 +80,35 @@ struct OpLayerNorm {
                                            ::megakernel::state<config> &mks) {
             GenericInstruction inst{};
             inst.deserialize_from(mks.instruction());
-            // TODO: Implement LayerNorm over n_dim with epsilon = inst.scale_factor
-            (void)g; (void)inst;
+            // Minimal LayerNorm over n_dim with epsilon = inst.scale_factor (gamma only)
+            if (::kittens::laneid() == 0) {
+                const int N = inst.n_dim;
+                const float eps = inst.scale_factor;
+
+                const float *x = g.template ptr_input0<const float>(inst.input_offset_0);
+                const float *gamma = g.template ptr_weight<const float>(inst.weight_offset);
+                float *y = g.template ptr_output<float>(inst.output_offset);
+
+                float mean = 0.f;
+                #pragma unroll 1
+                for (int i = 0; i < N; ++i) mean += x[i];
+                mean /= (float)N;
+
+                float var = 0.f;
+                #pragma unroll 1
+                for (int i = 0; i < N; ++i) {
+                    float d = x[i] - mean;
+                    var += d * d;
+                }
+                var /= (float)N;
+                float inv_std = rsqrtf(var + eps);
+
+                #pragma unroll 1
+                for (int i = 0; i < N; ++i) {
+                    float nh = (x[i] - mean) * inv_std;
+                    y[i] = nh * (gamma ? gamma[i] : 1.f);
+                }
+            }
         }
     };
 
@@ -91,4 +139,3 @@ struct OpLayerNorm {
 
 } // namespace generic
 } // namespace megakernel
-
