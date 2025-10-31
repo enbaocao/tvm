@@ -74,7 +74,9 @@ class TestInstructionPack(unittest.TestCase):
         self.assertEqual(int(buf[14]), 99)
         self.assertEqual(np.float32(inst.scale_factor).view(np.int32), buf[15])
 
+        # Padding (remaining slots) should be zero
+        self.assertTrue(np.all(buf[16:] == 0))
+
 
 if __name__ == "__main__":
     unittest.main()
-

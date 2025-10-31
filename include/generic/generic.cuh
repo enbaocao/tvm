@@ -31,6 +31,10 @@
 // Generic op implementations (scaffold)
 #include "ops/matmul.cuh"
 #include "ops/norm.cuh"
+// Optional ops for smoke testing
+#include "ops/attention.cuh"
+#include "ops/rope.cuh"
+#include "ops/fused.cuh"
 
 namespace megakernel {
 namespace generic {
@@ -144,6 +148,18 @@ __device__ inline void dispatch_generic_instruction_worker(
     case OP_LAYER_NORM:
         OpLayerNorm<config>::consumer::run(g, mks);
         break;
+    case OP_ATTENTION_PARTIAL:
+        OpAttentionPartial<config>::consumer::run(g, mks);
+        break;
+    case OP_ROPE_EMBED:
+        OpRopeEmbed<config>::consumer::run(g, mks);
+        break;
+    case OP_FUSED_NORM_MATMUL:
+        OpFusedNormMatmul<config>::consumer::run(g, mks);
+        break;
+    case OP_FUSED_NORM_QKV_ROPE:
+        OpFusedNormQkvRope<config>::consumer::run(g, mks);
+        break;
     default:
         // Unknown opcode for consumer; no-op
         break;
@@ -167,6 +183,18 @@ __device__ inline void dispatch_generic_instruction_worker(
     case OP_LAYER_NORM:
         OpLayerNorm<config>::loader::run(g, mks);
         break;
+    case OP_ATTENTION_PARTIAL:
+        // no-op loader in smoke version
+        break;
+    case OP_ROPE_EMBED:
+        // no-op loader in smoke version
+        break;
+    case OP_FUSED_NORM_MATMUL:
+        // no-op loader in smoke version
+        break;
+    case OP_FUSED_NORM_QKV_ROPE:
+        // no-op loader in smoke version
+        break;
     default:
         break;
     }
@@ -189,6 +217,18 @@ __device__ inline void dispatch_generic_instruction_worker(
     case OP_LAYER_NORM:
         OpLayerNorm<config>::storer::run(g, mks);
         break;
+    case OP_ATTENTION_PARTIAL:
+        // no-op storer in smoke version
+        break;
+    case OP_ROPE_EMBED:
+        // no-op storer in smoke version
+        break;
+    case OP_FUSED_NORM_MATMUL:
+        // no-op storer in smoke version
+        break;
+    case OP_FUSED_NORM_QKV_ROPE:
+        // no-op storer in smoke version
+        break;
     default:
         break;
     }
@@ -210,6 +250,18 @@ __device__ inline void dispatch_generic_instruction_worker(
         break;
     case OP_LAYER_NORM:
         OpLayerNorm<config>::launcher::run(g, mks);
+        break;
+    case OP_ATTENTION_PARTIAL:
+        // no-op
+        break;
+    case OP_ROPE_EMBED:
+        // no-op
+        break;
+    case OP_FUSED_NORM_MATMUL:
+        // no-op
+        break;
+    case OP_FUSED_NORM_QKV_ROPE:
+        // no-op
         break;
     default:
         break;

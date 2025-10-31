@@ -122,6 +122,16 @@ struct RuntimeGlobals {
         return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
     }
 
+    // Secondary and tertiary inputs (by default, also alias hidden_states)
+    template <typename T = kittens::bf16>
+    __device__ __host__ inline const T *ptr_input1(uint32_t offset_elems) const {
+        return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
+    }
+    template <typename T = kittens::bf16>
+    __device__ __host__ inline const T *ptr_input2(uint32_t offset_elems) const {
+        return reinterpret_cast<const T *>(hidden_states.data) + offset_elems;
+    }
+
     template <typename T = kittens::bf16>
     __device__ __host__ inline T *ptr_weight(uint32_t offset_elems) const {
         return reinterpret_cast<T *>(unified_weights.data) + offset_elems;

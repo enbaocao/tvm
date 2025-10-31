@@ -29,8 +29,8 @@ class TestOpcodeConsistency(unittest.TestCase):
         self.assertEqual(mapping["OP_ROPE_EMBED"], Opcode.ROPE_EMBED)
         self.assertEqual(mapping["OP_RESIDUAL_ADD"], Opcode.RESIDUAL_ADD)
         self.assertEqual(mapping["OP_FUSED_NORM_QKV_ROPE"], Opcode.FUSED_NORM_QKV_ROPE)
+        self.assertEqual(mapping["OP_FUSED_NORM_MATMUL"], Opcode.FUSED_NORM_MATMUL)
 
 
 if __name__ == "__main__":
     unittest.main()
-
