@@ -37,23 +37,48 @@ This is a **Megakernels** project for high-performance LLM inference, built on t
 ## Development Commands
 
 ### Initial Setup
+
+**✅ Verified Working on H100:**
+
 ```bash
 git submodule update --init --recursive
-pip install uv
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-uv pip install -e .
+
+# Create venv with system Python
+python3 -m venv venv310
+source venv310/bin/activate
+pip install -e .
+
+# Login to HuggingFace (for Llama model access)
+pip install -U "huggingface_hub[cli]"
+huggingface-cli login
 ```
 
+**Note:** The `pyproject.toml` requires Python >= 3.10 (not 3.12).
+
 ### Compile Megakernel (Required Before Running)
+
+**IMPORTANT:** `PYTHON_VERSION` must match your active Python environment exactly!
+
 ```bash
+# Check your Python version first
+python --version  # e.g., Python 3.10.12
+
+# Set environment (adjust PYTHON_VERSION to match above)
 export THUNDERKITTENS_ROOT=$(pwd)/ThunderKittens
 export MEGAKERNELS_ROOT=$(pwd)
-export PYTHON_VERSION=3.12  # adjust to your Python version
-export GPU=H100  # options: {H100, B200}, defaults to B200
+export PYTHON_VERSION=3.10  # Must match: python --version
+export GPU=H100  # Options: H100, A100, 4090, or unset for B200
+
 cd demos/low-latency-llama
 make
-cd ../..  # return to repo root
+cd ../..
+
+# Verify compilation succeeded
+ls demos/low-latency-llama/mk_llama*.so
+# Should show: mk_llama.cpython-310-x86_64-linux-gnu.so
 ```
+
+**Common issue:** If you get "No module named 'mk_llama'", the Python version in the .so filename must match your runtime Python version. Recompile with the correct `PYTHON_VERSION`.
 
 The Makefile compiles CUDA kernels with:
 - `-arch=sm_90a` for H100, `-arch=sm_100a` for B200

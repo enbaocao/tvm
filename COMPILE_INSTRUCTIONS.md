@@ -1,12 +1,19 @@
 # Compiling the Megakernel
 
+**✅ Tested and Working on H100 SXM5**
+
 ## Quick Start (Copy-Paste)
 
 ```bash
-# Set environment variables
+# Create venv with system Python (one-time setup)
+python3 -m venv venv310
+source venv310/bin/activate
+pip install -e .
+
+# Set environment variables (Python version must match venv)
 export THUNDERKITTENS_ROOT=$(pwd)/ThunderKittens
 export MEGAKERNELS_ROOT=$(pwd)
-export PYTHON_VERSION=3.12  # Change to match your python3 version
+export PYTHON_VERSION=3.10  # Must match: python --version
 export GPU=H100             # Options: 4090, A100, H100, or unset for B200
 
 # Navigate to demo directory
@@ -17,7 +24,12 @@ make
 
 # Return to root
 cd ../..
+
+# Test
+python megakernels/scripts/generate.py mode=mk prompt="Hello world" ntok=10
 ```
+
+**Expected result:** ~1000 tokens/second on H100
 
 ## Step-by-Step Instructions
 
